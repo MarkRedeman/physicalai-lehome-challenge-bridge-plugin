@@ -1,3 +1,12 @@
+[project]
+name = "physicalai-lehome-challenge-bridge"
+version = "0.0.0"
+description = "Workspace root for the LeHome challenge bridge (virtual project)"
+# Bound resolution to the Python versions we actually use: 3.11 (Isaac Sim
+# container) and 3.12 (Studio/dev host). Without this uv also tries 3.15+,
+# where isaacsim-core's pywin32 dependency has no linux wheels.
+requires-python = ">=3.11,<3.13"
+
 [tool.uv.workspace]
 members = ["packages/*"]
 
@@ -7,18 +16,61 @@ members = ["packages/*"]
 # container (Python 3.11); the Studio-side deps (physicalai-studio-plugin +
 # bimanual URDF, Python >=3.12) are installed on the Studio host separately
 # and are importorskip'd in tests. Sim deps live in sim/requirements.txt.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+# Isaac Sim 5.1.0 pins packaging==23.0 (lerobot wants >=24.2) and needs
+# numpy==1.26.0; the same overrides used by the lehome-challenge repo. We also
+# pin transformers==4.57.6 (lehome's working version): physicalai declares
+# transformers>=5.5 but only imports it lazily for inference preprocessors the
+# sim owner never uses, and transformers 5.x's huggingface-hub>=1.5 conflicts
+# with lerobot's huggingface-hub<0.36.
+override-dependencies = [
+    "packaging==23.0",
+    "numpy==1.26.0",
+    "transformers==4.57.6",
+]
 
 [tool.uv.sources]
+physicalai-lehome-challenge-bridge-plugin = { workspace = true }
 physicalai-studio-plugin = { git = "https://github.com/open-edge-platform/physical-ai-studio.git", subdirectory = "application/plugin", rev = "c9006aa9fbac0cf3bfcd4057200dd3b2f612dea6" }
 physicalai = { git = "https://github.com/openvinotoolkit/physicalai.git", rev = "3e163cfebc5f0fe6d97a6e792b4b0a55614d9a44" }
 physicalai-bimanual-so101-plugin = { git = "https://github.com/MarkRedeman/physicalai-rebot-b601-plugin.git", subdirectory = "packages/physicalai-bimanual-so101-plugin" }
 
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com/"
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu128"
+
 [dependency-groups]
 dev = [
     "pytest",
+    "pytest-anyio",
     "mypy",
     "ruff>=0.15.14",
     "pyrefly>=0.58.0",
+    "physicalai-lehome-challenge-bridge-plugin",
+    # Studio-side deps (Python >=3.12) so the catalog tests can import them.
+    # Markers keep the 3.11 resolution (sim container) from pulling them.
+    "physicalai-studio-plugin; python_version >= '3.12'",
+    "physicalai-bimanual-so101-plugin; python_version >= '3.12'",
+]
+# Isaac Sim container deps (Python 3.11 only — isaacsim-core requires
+# ==3.11.*). Installed via `uv sync --group sim` so uv applies the
+# required-environments (Linux x86_64, which drops pywin32 et al.) and the
+# packaging/numpy/transformers overrides. The python_version marker keeps the
+# 3.12 dev host from trying to resolve these.
+sim = [
+    "isaacsim[all,extscache]==5.1.0; python_version < '3.12'",
+    "lerobot==0.4.3; python_version < '3.12'",
+    "physicalai-lehome-challenge-bridge-plugin",
 ]
 
 [tool.ruff]

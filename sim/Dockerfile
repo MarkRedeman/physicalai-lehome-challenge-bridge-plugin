@@ -50,13 +50,17 @@ WORKDIR /workspace
 # Bring in the whole repo (workspace) so uv can build the plugin package.
 COPY . .
 
-# Python 3.11 + every pinned dependency (Isaac Sim 5.1.0, lerobot, the bridge
-# plugin). The plugin's `sim` deps are installed here; the Studio-only deps
-# are NOT (they need Python >=3.12 and belong on the Studio host).
+# Python 3.11 + the bridge plugin workspace + the sim deps (Isaac Sim 5.1.0,
+# lerobot) as a dependency group. `--no-install-project` keeps the virtual
+# workspace root from being built; the plugin is pulled in via the sim group.
+# The plugin's Studio-only deps are NOT installed here (they need Python >=3.12
+# and belong on the Studio host). UV_HTTP_TIMEOUT is raised because
+# pypi.nvidia.com is flaky for the nvidia-*-cu12 wheels.
 # A uv cache mount keeps downloads warm across rebuilds.
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv python install 3.11 \
-    && uv sync --python 3.11 --no-dev --extra sim
+    && export UV_HTTP_TIMEOUT=600 \
+    && uv sync --python 3.11 --no-dev --group sim --no-install-project
 
 # IsaacLab fork (shallow clone) + editable install of its extensions.
 # `-i none` installs the extensions but skips the RL-framework extras.

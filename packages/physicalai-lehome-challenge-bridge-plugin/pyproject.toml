@@ -30,6 +30,9 @@ physicalai-lehome-challenge-bridge = "physicalai_lehome_challenge_bridge_plugin.
 
 [tool.hatch.version]
 source = "vcs"
+# Version fallback used when the .git dir is not present (e.g. docker build
+# context that excludes .git), so hatch-vcs still builds.
+fallback-version = "0.0.0"
 raw-options = { search_parent_directories = true }
 
 [tool.hatch.build.targets.wheel]

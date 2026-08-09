@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.venv-*/
+venv/
+build/
+dist/
+*.whl
+
+# Test / tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# VCS / editors
+.git/
+.vscode/
+.idea/
+.DS_Store
+
+# Simulation data (large, mounted from host as volumes)
+Assets/
+Datasets/
+outputs/
+
+# Local env
+.env
