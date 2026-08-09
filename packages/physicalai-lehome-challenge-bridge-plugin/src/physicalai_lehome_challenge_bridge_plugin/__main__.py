@@ -81,12 +81,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run Isaac Sim without a viewport window",
     )
     serve.add_argument(
-        "--enable-cameras",
-        action="store_true",
-        default=True,
-        help="Enable camera rendering (required for the MJPEG streams)",
-    )
-    serve.add_argument(
         "--no-cameras",
         action="store_true",
         default=False,
@@ -120,6 +114,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _start(args: argparse.Namespace) -> int:
+    enable_cameras = not args.no_cameras
     sim_config = SimLaunchConfig(
         garment_type=args.garment_type,
         garment_name=args.garment_name,
@@ -127,10 +122,10 @@ def _start(args: argparse.Namespace) -> int:
         garment_cfg_base_path=args.garment_cfg_base_path,
         particle_cfg_path=args.particle_cfg_path,
         headless=args.headless,
-        enable_cameras=args.enable_cameras,
+        enable_cameras=enable_cameras,
         device=args.device,
     )
-    robot = LeHomeGarmentRobot(sim_config.as_dict(), enable_cameras=args.enable_cameras)
+    robot = LeHomeGarmentRobot(sim_config.as_dict(), enable_cameras=enable_cameras)
 
     config = RobotOwnerConfig(
         name=args.name,
@@ -141,7 +136,7 @@ def _start(args: argparse.Namespace) -> int:
     )
 
     camera_server: MjpegCameraServer | None = None
-    if args.enable_cameras and not args.no_cameras:
+    if enable_cameras:
         camera_server = MjpegCameraServer(
             get_default_store(["top", "left_wrist", "right_wrist"]),
             port=args.camera_port,

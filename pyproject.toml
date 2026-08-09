@@ -14,8 +14,8 @@ members = ["packages/*"]
 # Dev/testing happens on the host (Python >=3.12, see .python-version). The
 # plugin keeps requires-python ">=3.11" so it installs on the Isaac Sim
 # container (Python 3.11); the Studio-side deps (physicalai-studio-plugin +
-# bimanual URDF, Python >=3.12) are installed on the Studio host separately
-# and are importorskip'd in tests. Sim deps live in sim/requirements.txt.
+# bimanual URDF, Python >=3.12) live in the dev group (marked for 3.12+).
+# Sim deps live in the `sim` dependency group.
 required-environments = [
     "sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
@@ -56,6 +56,7 @@ dev = [
     "mypy",
     "ruff>=0.15.14",
     "pyrefly>=0.58.0",
+    "prek",
     "physicalai-lehome-challenge-bridge-plugin",
     # Studio-side deps (Python >=3.12) so the catalog tests can import them.
     # Markers keep the 3.11 resolution (sim container) from pulling them.
@@ -83,23 +84,83 @@ extend-exclude = ["sim", "examples"]
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "missing-copyright-notice",
+    "CPY001",
 ]
 fixable = ["ALL"]
 unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
 "packages/*/tests/**/*.py" = [
-    "unused-function-argument",
-    "unused-method-argument",
-    "class-as-data-structure",
+    "ARG001",
+    "ARG002",
+    "B903",
     "D",
-    "implicit-namespace-package",
-    "import-outside-top-level",
-    "compare-to-empty-string",
-    "import-private-name",
-    "magic-value-comparison",
-    "no-self-use",
-    "float-equality-comparison",
-    "assert",
+    "INP001",
+    "PLC0415",
+    "PLC1901",
+    "PLC2701",
+    "PLR2004",
+    "PLR6301",
+    "RUF069",
+    "S101",
 ]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.pylint]
+max-args = 15
+
+[tool.pytest.ini_options]
+testpaths = "packages/"
+addopts = "--import-mode=importlib"
+
+[tool.pyrefly]
+python-version = "3.12"
+search-path = [
+    "packages/physicalai-lehome-challenge-bridge-plugin/src",
+]
+project-includes = [
+    "packages/physicalai-lehome-challenge-bridge-plugin/src",
+]
+# Isaac Sim / lehome / torch only exist in the sim container (Python 3.11),
+# not on the Studio/dev host, so treat them as Any when type checking there.
+ignore-missing-imports = [
+    "gymnasium",
+    "isaaclab",
+    "isaaclab.*",
+    "lehome",
+    "lehome.*",
+    "torch",
+]
+
+[tool.markdownlint]
+default = true
+
+[tool.markdownlint.MD001]
+enabled = true
+
+[tool.markdownlint.MD013]
+line_length = 1000
+
+[tool.markdownlint.MD024]
+allow_different_nesting = true
+siblings_only = true
+
+[tool.markdownlint.MD033]
+enabled = false
+
+[tool.markdownlint.MD034]
+enabled = false
+
+[tool.markdownlint.MD036]
+enabled = false
+
+[tool.markdownlint.MD041]
+enabled = false
+
+[tool.markdownlint.MD042]
+enabled = false

@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     import numpy as np
     from physicalai.robot.interface import Robot as PhysicalAIRobot
     from physicalai.robot.interface import RobotObservation
+    from physicalai.robot.transport import SharedRobot
 
     class _RobotCatalogRegistry(Protocol):
         def register_robot(self, definition: RobotCatalogDefinition) -> None: ...
@@ -127,7 +128,7 @@ _LEHOME_PROBE = LeHomeGarmentProbe()
 class _SharedLeHomeRobot:
     """Adapter exposing a shared (zenoh) owner through the Robot protocol."""
 
-    def __init__(self, shared_robot: object) -> None:
+    def __init__(self, shared_robot: SharedRobot) -> None:
         self._shared_robot = shared_robot
         self.joint_names = list(JOINT_ORDER)
 

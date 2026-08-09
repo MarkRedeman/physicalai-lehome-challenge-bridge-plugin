@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
         xvfb \
         xauth \
+        x11-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # uv (Python package manager)

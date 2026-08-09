@@ -146,7 +146,7 @@ class LeHomeGarmentRobot:
         if not self.is_connected():
             msg = "Robot is not connected. Call connect() first."
             raise ConnectionError(msg)
-        assert self._bootstrapper is not None  # ruff: ignore[assert]
+        assert self._bootstrapper is not None  # ruff: ignore[assert]  # guaranteed by is_connected()
 
         action = self._pending_action if self._pending_action is not None else np.zeros(NUM_JOINTS, dtype=np.float32)
         self._bootstrapper.step(_action_to_tensor(action, self._sim_config.device))
@@ -188,35 +188,11 @@ class LeHomeGarmentRobot:
             raise ValueError(msg)
         self._pending_action = np.asarray(action, dtype=np.float32).copy()
 
-    def render_camera(self, camera_name: str, width: int, height: int) -> np.ndarray:
-        """Render one RGB frame from a named camera (for on-demand snapshots).
-
-        Returns:
-            The rendered RGB image resized to ``(height, width)``.
-
-        Raises:
-            ConnectionError: If the robot is not connected.
-            ValueError: If ``camera_name`` is unknown.
-
-        """
-        if not self.is_connected() or self._bootstrapper is None:
-            msg = "Robot is not connected."
-            raise ConnectionError(msg)
-        obs_key = _CAMERA_OBS_KEYS.get(camera_name)
-        if obs_key is None:
-            msg = f"Unknown camera {camera_name!r}; expected one of {list(_CAMERA_OBS_KEYS)}"
-            raise ValueError(msg)
-        observations = self._bootstrapper.env._get_observations()  # ruff: ignore[private-member-access]
-        frame = np.asarray(observations[obs_key])
-        import cv2  # ruff: ignore[import-outside-top-level]
-
-        return cv2.resize(frame[:, :, ::-1], (width, height))
-
     def _capture_images(self, observations: dict) -> dict:
         from physicalai.capture.frame import Frame  # ruff: ignore[import-outside-top-level]
 
         images: dict[str, Frame] = {}
-        assert self._camera_store is not None  # ruff: ignore[assert]
+        assert self._camera_store is not None  # ruff: ignore[assert]  # guaranteed when enable_cameras
         for camera_name, obs_key in _CAMERA_OBS_KEYS.items():
             frame = np.asarray(observations[obs_key])
             self._camera_store.update(camera_name, frame)

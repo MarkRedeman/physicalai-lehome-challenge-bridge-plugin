@@ -1,5 +1,7 @@
 """LeHome Challenge bridge plugin for PhysicalAI Studio."""
 
+# ruff: file-ignore[import-outside-top-level] -- lazy imports keep the package importable without Isaac Sim
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -20,13 +22,13 @@ __all__ = [
 
 def __getattr__(name: str) -> object:
     if name == "LeHomeGarmentRobot":
-        from physicalai_lehome_challenge_bridge_plugin.lehome_robot import (  # ruff: ignore[import-outside-top-level]
+        from physicalai_lehome_challenge_bridge_plugin.lehome_robot import (
             LeHomeGarmentRobot,
         )
 
         return LeHomeGarmentRobot
     if name == "LeHomeGarmentObservation":
-        from physicalai_lehome_challenge_bridge_plugin.lehome_robot import (  # ruff: ignore[import-outside-top-level]
+        from physicalai_lehome_challenge_bridge_plugin.lehome_robot import (
             LeHomeGarmentObservation,
         )
 

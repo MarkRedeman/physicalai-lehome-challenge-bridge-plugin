@@ -12,7 +12,7 @@ PhysicalAI Studio as a bimanual SO-101 follower robot.
 
 ## Architecture
 
-```
+```text
 ┌───────────────────────────  sim host / container  ───────────────────────────┐
 │ physicalai-lehome-challenge-bridge serve                                     │
 │  ├─ Isaac Sim SimulationApp (main process)                                    │
@@ -20,7 +20,7 @@ PhysicalAI Studio as a bimanual SO-101 follower robot.
 │  ├─ zenoh owner loop (run_owner, in-process)  ── state/action ──┐            │
 │  └─ MJPEG camera server (top/left_wrist/right_wrist)  ── HTTP ──┼─┐          │
 └───────────────────────────────────────────────────────────────────┼─┼──────────┘
-                                                                    │ │
+                                                                     │ │
 ┌───────────────────────────  Studio host  ─────────────────────────┴─┴────────┐
 │ PhysicalAI Studio catalog plugin (this package)                              │
 │  └─ SharedRobot.attach(name="lehome-garment")  ◄── zenoh ────────────────────┘
@@ -37,7 +37,7 @@ subprocess used by the MuJoCo plugin.
 
 ### 1. Start the simulation (the user's job)
 
-See [`sim/`](sim/README.md) for the containerized setup (recommended) or the
+See [`sim/`](../../sim/README.md) for the containerized setup (recommended) or the
 host-level scripts. In short:
 
 ```bash
@@ -45,7 +45,6 @@ host-level scripts. In short:
 physicalai-lehome-challenge-bridge serve \
     --name lehome-garment \
     --garment-type top_long \
-    --enable-cameras \
     --allow-remote
 ```
 

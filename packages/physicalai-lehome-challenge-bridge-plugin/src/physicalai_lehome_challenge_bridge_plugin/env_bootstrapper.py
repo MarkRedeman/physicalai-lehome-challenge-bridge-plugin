@@ -5,6 +5,8 @@ importing the bridge package on a Studio host (which has no Isaac Sim) is
 safe. Only the serve CLI inside the simulator process calls these.
 """
 
+# ruff: file-ignore[import-outside-top-level] -- every import here is intentionally lazy (Isaac Sim must not load at import time)
+
 from __future__ import annotations
 
 import argparse
@@ -87,15 +89,14 @@ class SimBootstrapper:
             return
         self._app = self._launch_app()
         # Importing the task package registers the gym env id.
-        import gymnasium as gym  # ruff: ignore[import-outside-top-level]
-        import lehome.tasks.bedroom  # ruff: ignore[import-outside-top-level, unused-import]
+        import gymnasium as gym
 
         env_cfg = self._build_env_cfg()
         self._env = gym.make(TASK_NAME, cfg=env_cfg).unwrapped
         self._env.initialize_obs()
 
     def _launch_app(self) -> object:
-        from isaaclab.app import AppLauncher  # ruff: ignore[import-outside-top-level]
+        from isaaclab.app import AppLauncher
 
         args = self._build_launcher_args()
         app_launcher = AppLauncher(vars(args))
@@ -113,7 +114,7 @@ class SimBootstrapper:
         return argparse.Namespace(**base)
 
     def _build_env_cfg(self) -> object:
-        from lehome.tasks.bedroom.garment_bi_cfg_v2 import GarmentEnvCfg  # ruff: ignore[import-outside-top-level]
+        from lehome.tasks.bedroom.garment_bi_cfg_v2 import GarmentEnvCfg
 
         cfg = GarmentEnvCfg()
         cfg.garment_cfg_base_path = self._config.garment_cfg_base_path
@@ -149,10 +150,6 @@ class SimBootstrapper:
     def step(self, action: Tensor) -> None:
         """Step the environment with the given action tensor."""
         self.env.step(action)
-
-    def reset(self) -> None:
-        """Reset the environment to its initial state."""
-        self.env.reset()
 
     def disconnect(self) -> None:
         """Close the SimulationApp, releasing the GPU."""

@@ -104,8 +104,8 @@ class _MjpegHandler(BaseHTTPRequestHandler):
             threading.Event().wait(0.03)  # ~30 FPS ceiling
 
     @staticmethod
-    def log_message(fmt: str, *args: object) -> None:
-        logger.debug(fmt, *args)
+    def log_message(format: str, *args: object) -> None:  # ruff: ignore[builtin-argument-shadowing]  # matches BaseHTTPRequestHandler signature
+        logger.debug(format, *args)
 
 
 class MjpegCameraServer:

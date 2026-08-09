@@ -27,10 +27,10 @@ The simulation needs two data sets that are **not bundled** in this repo or
 in the Docker image. They are downloaded from the LeHome Challenge's public
 Hugging Face repos by `sim/scripts/download-assets.sh`:
 
-| Directory        | Hugging Face repo                          | Contents                                              |
-| ---------------- | ------------------------------------------ | ----------------------------------------------------- |
-| `Assets/`        | `lehome/asset_challenge` (dataset)         | Garment meshes + scene/robot USD assets used by Isaac Sim |
-| `Datasets/example/` | `lehome/dataset_challenge_merged` (dataset) | Example demonstration episodes (episode_data, videos, …) |
+| Directory           | Hugging Face repo                           | Contents                                                  |
+| ------------------- | ------------------------------------------- | --------------------------------------------------------- |
+| `Assets/`           | `lehome/asset_challenge` (dataset)          | Garment meshes + scene/robot USD assets used by Isaac Sim |
+| `Datasets/example/` | `lehome/dataset_challenge_merged` (dataset) | Example demonstration episodes (episode_data, videos, …)  |
 
 Both are **mounted into the container** at `/workspace/Assets` and
 `/workspace/Datasets` via `docker-compose.yml` — they are never baked into
@@ -64,7 +64,6 @@ so Studio on the host can reach them.
 docker compose -f sim/docker-compose.yml exec lehome sim/scripts/serve.sh \
     --name lehome-garment \
     --garment-type top_long \
-    --enable-cameras \
     --allow-remote
 ```
 
@@ -109,10 +108,10 @@ known build fixes.
 
 ## Ports
 
-| Port | Used for                                    |
-| ---- | ------------------------------------------- |
-| 35869| Zenoh robot transport (`lehome-garment`). The deterministic port derives from the robot name; change `--name` and update `docker-compose.yml` together. |
-| 8090 | MJPEG camera HTTP server (3 endpoints)      |
+| Port  | Used for                                                                                                                                                |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 35869 | Zenoh robot transport (`lehome-garment`). The deterministic port derives from the robot name; change `--name` and update `docker-compose.yml` together. |
+| 8090  | MJPEG camera HTTP server (3 endpoints)                                                                                                                  |
 
 ## Troubleshooting
 

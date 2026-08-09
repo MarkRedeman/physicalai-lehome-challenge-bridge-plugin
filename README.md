@@ -10,7 +10,7 @@ This is a uv workspace containing:
 
 ## How it works
 
-```
+```text
 ┌────────────────────────  sim host / container  ─────────────────────────┐
 │ physicalai-lehome-challenge-bridge serve                                │
 │  ├─ Isaac Sim SimulationApp (main process)                              │
@@ -31,26 +31,30 @@ Key design points:
 - **SimulationApp stays in the main process.** Isaac Sim cannot be launched
   from the physicalai owner-worker subprocess, so the owner loop runs
   **in-process** via `run_owner` (the foreground pattern of `physicalai robot
-  serve`).
+serve`).
 - **Studio only attaches.** The catalog definition never spawns the sim; the
   user starts it. If it's not running, discovery/connection fails cleanly.
 - **Cameras over MJPEG.** The robot transport carries only joint state, so the
-  three garment cameras are streamed over plain HTTP (`multipart/x-mixed-replace`)
-  instead of fake USB devices.
+  three garment cameras are streamed over plain HTTP
+  (`multipart/x-mixed-replace`) instead of fake USB devices.
 
 ## Quick start
 
 1. Install the plugin on the Studio host (Python ≥ 3.12):
+
    ```bash
    pip install physicalai-lehome-challenge-bridge-plugin physicalai-studio-plugin physicalai-bimanual-so101-plugin
    ```
+
 2. Boot the simulation and serve it (see [`sim/README.md`](sim/README.md)):
+
    ```bash
    sim/scripts/download-assets.sh
    docker compose -f sim/docker-compose.yml build
    docker compose -f sim/docker-compose.yml up -d
    docker compose -f sim/docker-compose.yml exec lehome sim/scripts/serve.sh --garment-type top_long
    ```
+
 3. In Studio, connect to robot type **LeHome Garment Follower** (name
    `lehome-garment`). Open the camera feeds at `http://<host>:8090/`.
 
