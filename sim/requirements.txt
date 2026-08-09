@@ -1,0 +1,10 @@
+# Sim-side dependencies (Python 3.11). Installed in the Isaac Sim container
+# alongside the bridge plugin. These are intentionally NOT hard deps of the
+# plugin package so the Studio host can install it without Isaac Sim.
+#
+# - isaacsim 5.1.0: Isaac Sim pip packages (EULA must be accepted at build).
+# - lehome: the challenge environment package, installed from the
+#   lehome-challenge repo (see sim/Dockerfile).
+# - lerobot: dataset/policy tooling used by lehome.
+isaacsim[all,extscache]==5.1.0
+lerobot==0.4.3

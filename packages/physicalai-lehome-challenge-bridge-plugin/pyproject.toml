@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "physicalai-lehome-challenge-bridge-plugin"
+dynamic = ["version"]
+description = "Isaac Sim LeHome Challenge bridge plugin for PhysicalAI Studio"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "physicalai[transport]>=0.1.1",
+    "numpy>=1.24",
+    "loguru>=0.7",
+    "pydantic>=2.0",
+    "opencv-python>=4.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/MarkRedeman/physicalai-lehome-challenge-bridge-plugin"
+Repository = "https://github.com/MarkRedeman/physicalai-lehome-challenge-bridge-plugin"
+Issues = "https://github.com/MarkRedeman/physicalai-lehome-challenge-bridge-plugin/issues"
+
+[project.entry-points."physicalai.studio.catalog_plugins"]
+lehome-challenge = "physicalai_lehome_challenge_bridge_plugin.studio_catalog:register_physicalai_studio_plugin"
+
+[project.scripts]
+physicalai-lehome-challenge-bridge = "physicalai_lehome_challenge_bridge_plugin.__main__:main"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options = { search_parent_directories = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/physicalai_lehome_challenge_bridge_plugin"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/physicalai_lehome_challenge_bridge_plugin/**",
+    "README.md",
+    "pyproject.toml",
+    "LICENSE",
+]

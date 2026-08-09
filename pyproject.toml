@@ -1,0 +1,53 @@
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv]
+# Dev/testing happens on the host (Python >=3.12, see .python-version). The
+# plugin keeps requires-python ">=3.11" so it installs on the Isaac Sim
+# container (Python 3.11); the Studio-side deps (physicalai-studio-plugin +
+# bimanual URDF, Python >=3.12) are installed on the Studio host separately
+# and are importorskip'd in tests. Sim deps live in sim/requirements.txt.
+
+[tool.uv.sources]
+physicalai-studio-plugin = { git = "https://github.com/open-edge-platform/physical-ai-studio.git", subdirectory = "application/plugin", rev = "c9006aa9fbac0cf3bfcd4057200dd3b2f612dea6" }
+physicalai = { git = "https://github.com/openvinotoolkit/physicalai.git", rev = "3e163cfebc5f0fe6d97a6e792b4b0a55614d9a44" }
+physicalai-bimanual-so101-plugin = { git = "https://github.com/MarkRedeman/physicalai-rebot-b601-plugin.git", subdirectory = "packages/physicalai-bimanual-so101-plugin" }
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "mypy",
+    "ruff>=0.15.14",
+    "pyrefly>=0.58.0",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+preview = true
+src = ["packages/*/src"]
+extend-exclude = ["sim", "examples"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "missing-copyright-notice",
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"packages/*/tests/**/*.py" = [
+    "unused-function-argument",
+    "unused-method-argument",
+    "class-as-data-structure",
+    "D",
+    "implicit-namespace-package",
+    "import-outside-top-level",
+    "compare-to-empty-string",
+    "import-private-name",
+    "magic-value-comparison",
+    "no-self-use",
+    "float-equality-comparison",
+    "assert",
+]

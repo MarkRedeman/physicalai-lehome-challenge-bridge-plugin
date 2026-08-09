@@ -1,0 +1,60 @@
+# LeHome Challenge bridge — Isaac Sim simulation container.
+#
+# The bridge serves the garment environment as a zenoh robot owner + MJPEG
+# camera streams. Studio (on the host) attaches to it by name; the zenoh port
+# and the MJPEG camera port are published so the host can reach them.
+
+services:
+  lehome:
+    build:
+      context: ..
+      dockerfile: sim/Dockerfile
+    image: lehome-challenge-bridge
+    container_name: lehome-bridge
+    working_dir: /workspace
+    command: sleep infinity
+    stdin_open: true
+    tty: true
+
+    # --- NVIDIA GPU access ------------------------------------------------
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    # --- X11 (Isaac Sim GUI) ----------------------------------------------
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - XAUTHORITY=/tmp/.Xauthority
+      - __GLX_VENDOR_LIBRARY_NAME=nvidia
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - PYTHONUNBUFFERED=1
+
+    # --- Networking ----------------------------------------------------------
+    # The zenoh robot transport binds a deterministic TCP port derived from
+    # the robot name (lehome-garment -> 35869). `--allow-remote` on the serve
+    # CLI binds it to 0.0.0.0; publish it so Studio on the host can attach.
+    # The MJPEG camera server listens on 8090.
+    ports:
+      - "35869:35869/tcp"
+      - "8090:8090/tcp"
+
+    # --- Volumes ------------------------------------------------------------
+    # Assets + datasets are mounted from the host (never baked into the image).
+    volumes:
+      - ${XAUTHORITY:-/tmp/.Xauthority}:/tmp/.Xauthority:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ../Assets:/workspace/Assets
+      - ../Datasets:/workspace/Datasets
+      - ../outputs:/workspace/outputs
+      - lehome-bridge-cache:/root/.cache
+
+    # Isaac Sim relies heavily on shared memory for IPC.
+    shm_size: 16g
+
+volumes:
+  lehome-bridge-cache:
