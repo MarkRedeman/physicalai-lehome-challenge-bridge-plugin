@@ -54,6 +54,15 @@ Key design points:
 3. In Studio, connect to robot type **LeHome Garment Follower** (name
    `lehome-garment`). Open the camera feeds at `http://<host>:8090/`.
 
+> **Data requirement:** the simulation needs the LeHome Challenge `Assets/`
+> and `Datasets/` folders, which are **not** in this repo or the Docker image.
+> `sim/scripts/download-assets.sh` fetches them from the LeHome Challenge's
+> public Hugging Face repos into `Assets/` and `Datasets/` on your machine
+> (they are then mounted into the container). You only need this project —
+> not the original lehome-challenge repo — to get them. See
+> [`sim/README.md`](sim/README.md#where-do-assets-and-datasets-come-from) for
+> the details and for how to reuse data you already have.
+
 ## Development
 
 ```bash

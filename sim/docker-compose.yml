@@ -53,8 +53,13 @@ services:
       - ../outputs:/workspace/outputs
       - lehome-bridge-cache:/root/.cache
 
-    # Isaac Sim relies heavily on shared memory for IPC.
-    shm_size: 16g
+    # Isaac Sim relies heavily on shared memory for IPC. Using `ipc: host`
+    # shares the host's /dev/shm (typically ~50% of system RAM on Linux) so
+    # it scales automatically with available memory, instead of a fixed
+    # allocation. If you prefer an isolated, fixed-size allocation instead,
+    # comment out `ipc: host` and uncomment the line below:
+    # shm_size: 16g
+    ipc: host
 
 volumes:
   lehome-bridge-cache:

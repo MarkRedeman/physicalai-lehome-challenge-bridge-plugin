@@ -21,6 +21,31 @@ host-level scripts are a fallback if container performance is inadequate.
 sim/scripts/download-assets.sh     # Assets/ + Datasets/example
 ```
 
+### Where do Assets and Datasets come from?
+
+The simulation needs two data sets that are **not bundled** in this repo or
+in the Docker image. They are downloaded from the LeHome Challenge's public
+Hugging Face repos by `sim/scripts/download-assets.sh`:
+
+| Directory        | Hugging Face repo                          | Contents                                              |
+| ---------------- | ------------------------------------------ | ----------------------------------------------------- |
+| `Assets/`        | `lehome/asset_challenge` (dataset)         | Garment meshes + scene/robot USD assets used by Isaac Sim |
+| `Datasets/example/` | `lehome/dataset_challenge_merged` (dataset) | Example demonstration episodes (episode_data, videos, …) |
+
+Both are **mounted into the container** at `/workspace/Assets` and
+`/workspace/Datasets` via `docker-compose.yml` — they are never baked into
+the image, so you can point the volumes at data you already downloaded
+elsewhere by editing the compose file.
+
+Requirements for the download script: the Hugging Face CLI
+(`pip install -U "huggingface_hub[cli]"`). The script is resumable — re-run
+it any time to pick up where it left off.
+
+> If you already have the LeHome Challenge `Assets/` and `Datasets/` from the
+> original challenge repo, copy or symlink them into this repo's
+> `Assets/` / `Datasets/` directories (or update the volume mounts in
+> `sim/docker-compose.yml` to point at them) and skip the download.
+
 ### 2. Build and start
 
 ```bash
@@ -73,7 +98,7 @@ If container performance is insufficient, install Isaac Sim + lehome directly
 on a Linux host and use:
 
 ```bash
-uv sync --extra sim
+uv sync --group sim
 sim/scripts/serve-host.sh --name lehome-garment --garment-type top_long
 ```
 

@@ -5,7 +5,7 @@
 # containerized setup's performance is not good enough.
 #
 # Prereqs (installed manually, see README):
-#   - Python 3.11 venv with: uv sync --extra sim  (or pip install of the same)
+#   - Python 3.11 venv with: uv sync --group sim  (or pip install of the same)
 #   - IsaacLab fork installed via isaaclab.sh -i none (with the known fixes)
 #   - lehome package installed from the lehome-challenge repo
 #   - Assets/ and Datasets/ present in this repo root
@@ -20,7 +20,7 @@ cd "$REPO_ROOT"
 
 VENV="${VENV:-$REPO_ROOT/.venv}"
 if [[ ! -x "$VENV/bin/physicalai-lehome-challenge-bridge" ]]; then
-	echo "error: bridge CLI not found in $VENV. Run: uv sync --extra sim" >&2
+	echo "error: bridge CLI not found in $VENV. Run: uv sync --group sim" >&2
 	exit 1
 fi
 export PATH="$VENV/bin:$PATH"
