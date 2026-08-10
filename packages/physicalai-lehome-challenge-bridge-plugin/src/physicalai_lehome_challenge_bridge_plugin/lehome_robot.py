@@ -19,7 +19,8 @@ from loguru import logger
 from physicalai.config import export_config
 
 from physicalai_lehome_challenge_bridge_plugin._frame_store import CameraFrameStore, get_default_store
-from physicalai_lehome_challenge_bridge_plugin.constants import JOINT_ORDER, NUM_JOINTS
+from physicalai_lehome_challenge_bridge_plugin.constants import HOME_POSITION_RAD, JOINT_ORDER, NUM_JOINTS
+from physicalai_lehome_challenge_bridge_plugin.control import ControlCommand, ControlInbox, get_default_control
 from physicalai_lehome_challenge_bridge_plugin.env_bootstrapper import SimBootstrapper, SimLaunchConfig
 
 if TYPE_CHECKING:
@@ -92,6 +93,9 @@ class LeHomeGarmentRobot:
         self._enable_cameras = enable_cameras
         self._bootstrapper: SimBootstrapper | None = None
         self._camera_store: CameraFrameStore | None = None
+        self._control: ControlInbox = get_default_control()
+        self._garments: list[str] = []
+        self._garment_index = 0
         self._pending_action: np.ndarray | None = None
         self._sequence = 0
 
@@ -113,7 +117,26 @@ class LeHomeGarmentRobot:
         self._bootstrapper.connect()
         if self._enable_cameras:
             self._camera_store = get_default_store(list(_CAMERA_OBS_KEYS))
+
+        # Resolve the garment list and park the robot at home, then report state.
+        self._garments = self._bootstrapper.garment_list()
+        self._garment_index = self._find_garment_index(self._bootstrapper.env.cfg.garment_name)
+        self._pending_action = radians_to_degrees(np.asarray(HOME_POSITION_RAD, dtype=np.float32))
+        self._publish_control_state()
+
         logger.info("LeHome garment robot connected (task={})", "LeHome-BiSO101-Direct-Garment-v2")
+
+    @property
+    def current_garment(self) -> str | None:
+        """Name of the garment currently loaded in the scene."""
+        if not self.is_connected() or self._bootstrapper is None:
+            return None
+        return self._bootstrapper.env.cfg.garment_name
+
+    @property
+    def garments(self) -> list[str]:
+        """Ordered garment names for the configured type."""
+        return list(self._garments)
 
     def disconnect(self) -> None:
         """Close the SimulationApp, releasing the GPU."""
@@ -122,6 +145,9 @@ class LeHomeGarmentRobot:
             self._bootstrapper = None
         self._camera_store = None
         self._pending_action = None
+        self._garments = []
+        self._garment_index = 0
+        self._publish_control_state()
         logger.info("LeHome garment robot disconnected")
 
     def is_connected(self) -> bool:
@@ -147,6 +173,10 @@ class LeHomeGarmentRobot:
             msg = "Robot is not connected. Call connect() first."
             raise ConnectionError(msg)
         assert self._bootstrapper is not None  # ruff: ignore[assert]  # guaranteed by is_connected()
+
+        # Apply any pending scene-control commands before stepping the sim.
+        for command in self._control.drain():
+            self._handle_control(command)
 
         action = self._pending_action if self._pending_action is not None else np.zeros(NUM_JOINTS, dtype=np.float32)
         self._bootstrapper.step(_action_to_tensor(action, self._sim_config.device))
@@ -188,6 +218,106 @@ class LeHomeGarmentRobot:
             raise ValueError(msg)
         self._pending_action = np.asarray(action, dtype=np.float32).copy()
 
+    def reset(self) -> None:
+        """Reset the scene: re-home the robot and re-settle the current garment.
+
+        Runs the same pattern as the challenge eval script — ``env.reset()``
+        followed by stabilization steps at the home pose — so the garment is
+        ready for a fresh episode.
+
+        Raises:
+            ConnectionError: If the robot is not connected.
+
+        """
+        if not self.is_connected() or self._bootstrapper is None:
+            msg = "Robot is not connected. Call connect() first."
+            raise ConnectionError(msg)
+
+        self._bootstrapper.env.reset()
+        self._pending_action = radians_to_degrees(np.asarray(HOME_POSITION_RAD, dtype=np.float32))
+        self._stabilize()
+        self._publish_control_state()
+        logger.info("LeHome garment scene reset (garment={})", self.current_garment)
+
+    def switch_garment(self, name: str) -> None:
+        """Switch the scene to a different garment, then reset it.
+
+        Args:
+            name: Garment name (e.g. ``Top_Long_Seen_3``).
+
+        Raises:
+            ConnectionError: If the robot is not connected.
+        """
+        if not self.is_connected() or self._bootstrapper is None:
+            msg = "Robot is not connected. Call connect() first."
+            raise ConnectionError(msg)
+
+        self._bootstrapper.env.switch_garment(name)
+        self._garment_index = self._find_garment_index(name)
+        self.reset()
+        logger.info("LeHome garment switched (garment={})", name)
+
+    def next_garment(self) -> None:
+        """Advance to the next garment in the evaluation list (wraps around).
+
+        Raises:
+            ConnectionError: If the robot is not connected.
+
+        """
+        if not self.is_connected() or self._bootstrapper is None:
+            msg = "Robot is not connected. Call connect() first."
+            raise ConnectionError(msg)
+        if not self._garments:
+            logger.warning("No garments available to advance to; skipping")
+            return
+        self._garment_index = (self._garment_index + 1) % len(self._garments)
+        self.switch_garment(self._garments[self._garment_index])
+
+    def _handle_control(self, command: ControlCommand) -> None:
+        """Apply one control command to the live scene."""
+        try:
+            self._apply_control(command)
+        except Exception:  # ruff: ignore[blind-except]  # a control failure must not kill the owner loop
+            logger.exception("Failed to handle control command {}", command.kind)
+
+    def _apply_control(self, command: ControlCommand) -> None:
+        if command.kind == "reset":
+            self.reset()
+        elif command.kind == "switch":
+            if command.name is None:
+                logger.warning("Control 'switch' requires a garment name; ignoring")
+                return
+            self.switch_garment(command.name)
+        elif command.kind == "next":
+            self.next_garment()
+        else:  # pragma: no cover - defensive against unknown kinds
+            logger.warning("Unknown control command {!r}; ignoring", command.kind)
+
+    def _find_garment_index(self, name: str | None) -> int:
+        if name is None:
+            return 0
+        try:
+            return self._garments.index(name)
+        except ValueError:
+            return 0
+
+    def _stabilize(self, num_steps: int = 20) -> None:
+        """Step the sim at the home pose so the garment settles after a reset."""
+        assert self._bootstrapper is not None  # ruff: ignore[assert]  # guarded by callers
+        home = _action_to_tensor(
+            radians_to_degrees(np.asarray(HOME_POSITION_RAD, dtype=np.float32)),
+            self._sim_config.device,
+        )
+        for _ in range(num_steps):
+            self._bootstrapper.step(home)
+
+    def _publish_control_state(self) -> None:
+        self._control.update_state(
+            garment=self.current_garment,
+            index=self._garment_index,
+            num_garments=len(self._garments),
+        )
+
     def _capture_images(self, observations: dict) -> dict:
         from physicalai.capture.frame import Frame  # ruff: ignore[import-outside-top-level]
 
@@ -217,6 +347,9 @@ class LeHomeGarmentRobot:
         self._enable_cameras = bool(state.get("enable_cameras", True))
         self._bootstrapper = None
         self._camera_store = None
+        self._control = get_default_control()
+        self._garments = []
+        self._garment_index = 0
         self._pending_action = None
         self._sequence = 0
 

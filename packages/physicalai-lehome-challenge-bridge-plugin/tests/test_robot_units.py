@@ -1,11 +1,17 @@
+"""Unit tests for the LeHome garment robot and config resolution."""
+
 from __future__ import annotations
+
+import pathlib
+import sys
+from types import ModuleType
 
 import numpy as np
 import pytest
 from physicalai.config import to_config
 
 from physicalai_lehome_challenge_bridge_plugin.constants import NUM_JOINTS
-from physicalai_lehome_challenge_bridge_plugin.env_bootstrapper import SimLaunchConfig
+from physicalai_lehome_challenge_bridge_plugin.env_bootstrapper import SimBootstrapper, SimLaunchConfig
 from physicalai_lehome_challenge_bridge_plugin.lehome_robot import (
     LeHomeGarmentObservation,
     LeHomeGarmentRobot,
@@ -66,3 +72,41 @@ class TestLeHomeGarmentRobotConfig:
         robot = LeHomeGarmentRobot(SimLaunchConfig().as_dict())
         with pytest.raises(ConnectionError):
             robot.send_action(np.zeros(NUM_JOINTS, dtype=np.float32))
+
+
+class TestParticleCfgResolution:
+    def test_existing_path_passthrough(self, tmp_path: pathlib.Path) -> None:
+        cfg = tmp_path / "particle_garment_cfg.yaml"
+        cfg.write_text("x: 1", encoding="utf-8")
+        bootstrapper = SimBootstrapper(SimLaunchConfig(particle_cfg_path=str(cfg)))
+        assert pathlib.Path(bootstrapper._resolve_particle_cfg_path()) == cfg
+
+    def test_absolute_path_passthrough(self, tmp_path: pathlib.Path) -> None:
+        cfg = tmp_path / "particle_garment_cfg.yaml"
+        bootstrapper = SimBootstrapper(SimLaunchConfig(particle_cfg_path=str(cfg)))
+        assert pathlib.Path(bootstrapper._resolve_particle_cfg_path()) == cfg
+
+    def test_package_relative_fallback(self, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Fake an editable-installed lehome package with the config shipped
+        # inside it, and a missing repo-relative default.
+        package_dir = tmp_path / "lehome"
+        config_file = package_dir / "tasks" / "bedroom" / "config_file" / "particle_garment_cfg.yaml"
+        config_file.parent.mkdir(parents=True)
+        config_file.write_text("x: 1", encoding="utf-8")
+
+        fake_lehome = ModuleType("lehome")
+        fake_lehome.__file__ = str(package_dir / "__init__.py")
+        monkeypatch.setitem(sys.modules, "lehome", fake_lehome)
+
+        bootstrapper = SimBootstrapper(SimLaunchConfig(particle_cfg_path="source/lehome/.../particle_garment_cfg.yaml"))
+        assert pathlib.Path(bootstrapper._resolve_particle_cfg_path()) == config_file
+
+    def test_no_candidate_returns_configured(self, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        package_dir = tmp_path / "lehome"
+        fake_lehome = ModuleType("lehome")
+        fake_lehome.__file__ = str(package_dir / "__init__.py")
+        monkeypatch.setitem(sys.modules, "lehome", fake_lehome)
+
+        configured = "source/lehome/lehome/tasks/bedroom/config_file/particle_garment_cfg.yaml"
+        bootstrapper = SimBootstrapper(SimLaunchConfig(particle_cfg_path=configured))
+        assert bootstrapper._resolve_particle_cfg_path() == configured

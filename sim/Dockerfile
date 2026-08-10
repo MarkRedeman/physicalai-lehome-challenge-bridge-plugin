@@ -90,7 +90,13 @@ RUN --mount=type=cache,target=/root/.cache/uv bash -c 'source .venv/bin/activate
 
 # Install the lehome challenge environment package from its repo (reference
 # only — the challenge itself is not bundled in this image).
+# `lehome.utils.constant.ASSETS_ROOT` resolves Assets relative to the lehome
+# repo when it cannot find a git repo from CWD, so replace the repo's empty
+# Assets/ placeholder with a symlink to the /workspace/Assets volume mount
+# (populated by download-assets.sh).
 RUN git clone --depth 1 https://github.com/lehome-official/lehome-challenge.git lehome-challenge \
+    && rm -rf lehome-challenge/Assets \
+    && ln -s /workspace/Assets lehome-challenge/Assets \
     && bash -c 'source .venv/bin/activate && cd lehome-challenge && uv pip install -e ./source/lehome'
 
 # Force torch to the cu128 build Isaac Sim 5.1.0 expects. `uv sync` resolves

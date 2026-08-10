@@ -52,3 +52,20 @@ DEFAULT_ROBOT_NAME: Final = "lehome-garment"
 
 # Default MJPEG camera HTTP port.
 DEFAULT_CAMERA_PORT: Final = 8090
+
+# Home joint positions in radians, ordered as JOINT_ORDER (left then right).
+# Mirrors DUAL_ARM_HOME_POSITION from the lehome challenge's scripts/utils/common.py.
+HOME_POSITION_RAD: Final = (
+    -1.2363,  # left_shoulder_pan
+    -1.7135,  # left_shoulder_lift
+    1.4979,  # left_elbow_flex
+    1.0534,  # left_wrist_flex
+    -0.085,  # left_wrist_roll
+    -0.01176,  # left_gripper
+    1.2363,  # right_shoulder_pan
+    -1.7135,  # right_shoulder_lift
+    1.4979,  # right_elbow_flex
+    1.0534,  # right_wrist_flex
+    -0.085,  # right_wrist_roll
+    -0.01176,  # right_gripper
+)

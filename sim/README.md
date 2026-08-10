@@ -83,6 +83,27 @@ Camera feeds (open in a browser or VLC):
 - `http://<host>:8090/camera/left_wrist`
 - `http://<host>:8090/camera/right_wrist`
 
+## Controlling the running simulation
+
+While the sim is live, reset the scene or switch garments from the host via
+the MJPEG server's `POST /control` endpoint (port `8090`, published to the
+host):
+
+```bash
+# Reset the scene: re-home the robot and re-settle the current garment
+curl -X POST http://localhost:8090/control -d '{"cmd":"reset"}'
+
+# Switch to a specific garment by name
+curl -X POST http://localhost:8090/control -d '{"cmd":"switch","name":"Top_Long_Seen_3"}'
+
+# Advance to the next garment in the evaluation list (wraps around)
+curl -X POST http://localhost:8090/control -d '{"cmd":"next"}'
+```
+
+Responses include the current state, e.g.
+`{"ok": true, "current_garment": "Top_Long_Seen_3", "garment_index": 3, "num_garments": 12}`.
+Commands are queued and applied by the owner loop on its next tick.
+
 ## Headless vs GUI
 
 - `--headless`: no Isaac Sim viewport window (cameras still render). Good for

@@ -164,6 +164,9 @@ def _start(args: argparse.Namespace) -> int:
         result = run_owner(config, shutdown, ready=_ready, on_event=_on_event)
     except KeyboardInterrupt:
         result = None
+    except Exception:
+        logger.exception("Owner startup or loop failed; see traceback above")
+        raise
     finally:
         if camera_server is not None:
             camera_server.stop()

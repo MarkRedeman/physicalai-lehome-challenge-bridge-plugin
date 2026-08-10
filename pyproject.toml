@@ -68,9 +68,17 @@ dev = [
 # required-environments (Linux x86_64, which drops pywin32 et al.) and the
 # packaging/numpy/transformers overrides. The python_version marker keeps the
 # 3.12 dev host from trying to resolve these.
+#
+# plotly is a hard runtime dependency of the lehome env even though lehome's
+# setup.py does not declare it: garment_bi_v2.py imports
+# lehome.utils.depth_to_pointcloud at module load, which does `import plotly`.
+# open3d is likewise imported lazily at runtime (Garment.py) for particle
+# position checks. Both versions match the official lehome-challenge uv.lock.
 sim = [
     "isaacsim[all,extscache]==5.1.0; python_version < '3.12'",
     "lerobot==0.4.3; python_version < '3.12'",
+    "plotly==6.5.2; python_version < '3.12'",
+    "open3d==0.19.0; python_version < '3.12'",
     "physicalai-lehome-challenge-bridge-plugin",
 ]
 
@@ -91,8 +99,11 @@ unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
 "packages/*/tests/**/*.py" = [
+    "ANN001",
+    "ANN202",
     "ARG001",
     "ARG002",
+    "ARG005",
     "B903",
     "D",
     "INP001",
@@ -103,6 +114,7 @@ unfixable = []
     "PLR6301",
     "RUF069",
     "S101",
+    "SLF001",
 ]
 
 [tool.ruff.lint.pydocstyle]

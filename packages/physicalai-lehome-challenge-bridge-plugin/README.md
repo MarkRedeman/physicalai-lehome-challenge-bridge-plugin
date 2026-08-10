@@ -87,6 +87,36 @@ Studio discovers the robot type automatically when the plugin is installed on
 the Studio host. The catalog definition is **attach-only** — it never spawns
 the simulation.
 
+## Controlling the running simulation
+
+While the simulation is live, you can reset the scene or switch garments from
+the host via the MJPEG server's `POST /control` endpoint (port `8090`):
+
+```bash
+# Reset the scene: re-home the robot and re-settle the current garment
+curl -X POST http://localhost:8090/control -d '{"cmd":"reset"}'
+
+# Switch to a specific garment by name
+curl -X POST http://localhost:8090/control -d '{"cmd":"switch","name":"Top_Long_Seen_3"}'
+
+# Advance to the next garment in the evaluation list (wraps around)
+curl -X POST http://localhost:8090/control -d '{"cmd":"next"}'
+```
+
+Each request returns a JSON body with the current state, e.g.:
+
+```json
+{
+  "ok": true,
+  "current_garment": "Top_Long_Seen_3",
+  "garment_index": 3,
+  "num_garments": 12
+}
+```
+
+Commands are applied by the owner loop on its next control tick (they are
+queued and drained single-threaded, so there are no races with Isaac Sim).
+
 ## Development
 
 ```bash

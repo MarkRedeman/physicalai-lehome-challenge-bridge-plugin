@@ -5,10 +5,16 @@ Serves the latest rendered camera frames as classic MJPEG streams
 out-of-band image channel for the LeHome bridge: the physicalai robot
 transport only carries joint state, so camera feeds go over plain HTTP
 instead (no v4l2loopback needed, unlike the MuJoCo plugin).
+
+The same HTTP server also exposes a ``POST /control`` endpoint for scene
+control (reset / garment switching) while the simulation is live. Commands
+are pushed into the shared :class:`~physicalai_lehome_challenge_bridge_plugin.control.ControlInbox`
+and applied by the owner loop on its next tick.
 """
 
 from __future__ import annotations
 
+import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import TYPE_CHECKING
@@ -21,6 +27,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from physicalai_lehome_challenge_bridge_plugin._frame_store import CameraFrameStore
+    from physicalai_lehome_challenge_bridge_plugin.control import ControlInbox
 
 _BOUNDARY = "frame"
 _BOUNDARY_BYTES = b"--frame\r\n"
@@ -48,6 +55,7 @@ class _MjpegHandler(BaseHTTPRequestHandler):
 
     store: CameraFrameStore
     camera_names: list[str]
+    control: ControlInbox
 
     def do_GET(self) -> None:
         if self.path == "/":
@@ -62,6 +70,53 @@ class _MjpegHandler(BaseHTTPRequestHandler):
             self.send_error(404, f"Unknown camera {name!r}")
             return
         self._serve_stream(name)
+
+    def do_POST(self) -> None:
+        if self.path != "/control":
+            self.send_error(404, "Not found")
+            return
+        self._serve_control()
+
+    def _serve_control(self) -> None:
+        from physicalai_lehome_challenge_bridge_plugin.control import (  # ruff: ignore[import-outside-top-level]
+            ControlCommand,
+        )
+
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length) if length else b"{}"
+            payload = json.loads(body or b"{}")
+        except (ValueError, json.JSONDecodeError):
+            self.send_error(400, "Invalid JSON body")
+            return
+
+        kind = payload.get("cmd")
+        if kind not in {"reset", "switch", "next"}:
+            self._send_json(400, {"ok": False, "error": f"Unsupported cmd {kind!r}"})
+            return
+        name = payload.get("name") if kind == "switch" else None
+        if kind == "switch" and (not isinstance(name, str) or not name):
+            self._send_json(400, {"ok": False, "error": "'switch' requires a 'name' string"})
+            return
+
+        self.control.push(ControlCommand(kind=kind, name=name))
+        self._send_json(202, self._control_status())
+
+    def _control_status(self) -> dict:
+        return {
+            "ok": True,
+            "current_garment": self.control.current_garment,
+            "garment_index": self.control.garment_index,
+            "num_garments": self.control.num_garments,
+        }
+
+    def _send_json(self, status: int, payload: dict) -> None:
+        data = json.dumps(payload).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def _serve_index(self) -> None:
         body = "<html><body><ul>"
@@ -158,15 +213,19 @@ class MjpegCameraServer:
 
 
 def _mjpeg_handler_factory(store: CameraFrameStore) -> Callable[..., BaseHTTPRequestHandler]:
-    """Return a handler class bound to *store*.
+    """Return a handler class bound to *store* and the shared control inbox.
 
     Returns:
-        A ``BaseHTTPRequestHandler`` subclass reading from *store*.
-
+        A ``BaseHTTPRequestHandler`` subclass reading from *store* and
+        enqueueing control commands into the process-wide inbox.
     """
+    from physicalai_lehome_challenge_bridge_plugin.control import (  # ruff: ignore[import-outside-top-level]
+        get_default_control,
+    )
 
     class _Handler(_MjpegHandler):  # type: ignore[misc, valid-type]
         camera_names = store.names()
 
     _Handler.store = store
+    _Handler.control = get_default_control()
     return _Handler

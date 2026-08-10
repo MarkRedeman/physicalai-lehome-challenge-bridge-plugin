@@ -21,6 +21,15 @@ if TYPE_CHECKING:
 # Task registered by lehome.tasks.bedroom (see lehome/tasks/bedroom/__init__.py).
 TASK_NAME = "LeHome-BiSO101-Direct-Garment-v2"
 
+# Maps the bridge garment_type option to the challenge's sub-folder name.
+_GARMENT_TYPE_MAP: dict[str, str] = {
+    "top_long": "Top_Long",
+    "top_short": "Top_Short",
+    "pant_long": "Pant_Long",
+    "pant_short": "Pant_Short",
+    "custom": "Top_Long",
+}
+
 
 @dataclass
 class SimLaunchConfig:
@@ -118,7 +127,7 @@ class SimBootstrapper:
 
         cfg = GarmentEnvCfg()
         cfg.garment_cfg_base_path = self._config.garment_cfg_base_path
-        cfg.particle_cfg_path = self._config.particle_cfg_path
+        cfg.particle_cfg_path = self._resolve_particle_cfg_path()
         cfg.use_random_seed = False
         cfg.random_seed = self._config.seed
 
@@ -130,7 +139,35 @@ class SimBootstrapper:
         cfg.garment_version = self._config.garment_version
         return cfg
 
-    def _resolve_garment_name(self) -> str:
+    def _resolve_particle_cfg_path(self) -> str:
+        """Return the particle config path, resolving it relative to the lehome package.
+
+        The default (``source/lehome/...``) is relative to the lehome repo root;
+        when the package is installed editable from elsewhere (e.g. the sim
+        container clones it to ``lehome-challenge/source/lehome``), fall back to
+        the copy shipped inside the installed package.
+        """
+        configured = pathlib.Path(self._config.particle_cfg_path)
+        if configured.is_absolute() or configured.exists():
+            return str(configured)
+
+        import lehome
+
+        package_dir = pathlib.Path(lehome.__file__).resolve().parent
+        candidate = package_dir / "tasks" / "bedroom" / "config_file" / "particle_garment_cfg.yaml"
+        if candidate.exists():
+            return str(candidate)
+        return str(configured)
+
+    def garment_list(self) -> list[str]:
+        """Return the ordered garment names for the configured type.
+
+        Reads the evaluation list used by the challenge eval script
+        (``Assets/objects/Challenge_Garment/<version>/<Type>/<Type>.txt``).
+
+        Returns:
+            The garment names in list order (empty if the list is missing).
+        """
         type_map = {
             "top_long": "Top_Long",
             "top_short": "Top_Short",
@@ -143,8 +180,12 @@ class SimBootstrapper:
             pathlib.Path(self._config.garment_cfg_base_path) / self._config.garment_version / prefix / f"{prefix}.txt"
         )
         if not list_path.exists():
-            return f"{prefix}_Unseen_0"
-        names = [line.strip() for line in list_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            return []
+        return [line.strip() for line in list_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    def _resolve_garment_name(self) -> str:
+        names = self.garment_list()
+        prefix = _GARMENT_TYPE_MAP.get(self._config.garment_type, "Top_Long")
         return names[0] if names else f"{prefix}_Unseen_0"
 
     def step(self, action: Tensor) -> None:

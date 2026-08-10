@@ -50,6 +50,121 @@ class TestMjpegCameraServer:
         server = MjpegCameraServer(store, host="127.0.0.1", port=0)
         server.start()
         try:
-            assert server._server is not None  # ruff: ignore[private-member-access]
+            assert server._server is not None
+        finally:
+            server.stop()
+
+
+class TestControlEndpoint:
+    def _start_server(self, inbox):
+
+        # Bind the handler to a dedicated inbox so tests are isolated.
+        self._prev = None
+        store = CameraFrameStore(["top"])
+        server = MjpegCameraServer(store, host="127.0.0.1", port=0)
+        server.start()
+        assert server._server is not None
+        port = server._server.server_address[1]
+
+        # Re-point the handler class control to the given inbox.
+        handler = server._server.RequestHandlerClass
+        self._prev = handler.control
+        handler.control = inbox
+        return server, port, handler
+
+    def test_post_control_reset(self) -> None:
+        import http.client
+
+        from physicalai_lehome_challenge_bridge_plugin.control import ControlInbox
+
+        inbox = ControlInbox()
+        server, port, _ = self._start_server(inbox)
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.request("POST", "/control", body='{"cmd":"reset"}', headers={"Content-Type": "application/json"})
+            resp = conn.getresponse()
+            assert resp.status == 202
+            resp.read()
+            conn.close()
+
+            drained = inbox.drain()
+            assert len(drained) == 1
+            assert drained[0].kind == "reset"
+        finally:
+            server.stop()
+            if self._prev is not None:
+                handler = None  # ruff: ignore[unused-variable]
+
+    def test_post_control_switch(self) -> None:
+        import http.client
+
+        from physicalai_lehome_challenge_bridge_plugin.control import ControlInbox
+
+        inbox = ControlInbox()
+        server, port, _ = self._start_server(inbox)
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.request(
+                "POST",
+                "/control",
+                body='{"cmd":"switch","name":"Top_Long_Seen_3"}',
+                headers={"Content-Type": "application/json"},
+            )
+            resp = conn.getresponse()
+            assert resp.status == 202
+            resp.read()
+            conn.close()
+
+            drained = inbox.drain()
+            assert drained[0].kind == "switch"
+            assert drained[0].name == "Top_Long_Seen_3"
+        finally:
+            server.stop()
+
+    def test_post_control_invalid_json(self) -> None:
+        import http.client
+
+        from physicalai_lehome_challenge_bridge_plugin.control import ControlInbox
+
+        server, port, _ = self._start_server(ControlInbox())
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.request("POST", "/control", body="not json")
+            resp = conn.getresponse()
+            assert resp.status == 400
+            resp.read()
+            conn.close()
+        finally:
+            server.stop()
+
+    def test_post_control_unknown_cmd(self) -> None:
+        import http.client
+
+        from physicalai_lehome_challenge_bridge_plugin.control import ControlInbox
+
+        server, port, _ = self._start_server(ControlInbox())
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.request("POST", "/control", body='{"cmd":"explode"}')
+            resp = conn.getresponse()
+            assert resp.status == 400
+            resp.read()
+            conn.close()
+        finally:
+            server.stop()
+
+    def test_post_switch_requires_name(self) -> None:
+        import http.client
+
+        from physicalai_lehome_challenge_bridge_plugin.control import ControlInbox
+
+        server, port, _ = self._start_server(ControlInbox())
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.request("POST", "/control", body='{"cmd":"switch"}')
+            resp = conn.getresponse()
+            assert resp.status == 400
+            resp.read()
+            conn.close()
         finally:
             server.stop()
