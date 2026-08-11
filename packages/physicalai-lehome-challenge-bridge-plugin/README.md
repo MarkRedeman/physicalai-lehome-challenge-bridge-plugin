@@ -15,16 +15,16 @@ PhysicalAI Studio as a bimanual SO-101 follower robot.
 ```text
 ┌───────────────────────────  sim host / container  ───────────────────────────┐
 │ physicalai-lehome-challenge-bridge serve                                     │
-│  ├─ Isaac Sim SimulationApp (main process)                                    │
-│  ├─ GarmentEnv (LeHome-BiSO101-Direct-Garment-v2)                             │
-│  ├─ zenoh owner loop (run_owner, in-process)  ── state/action ──┐            │
-│  └─ MJPEG camera server (top/left_wrist/right_wrist)  ── HTTP ──┼─┐          │
-└───────────────────────────────────────────────────────────────────┼─┼──────────┘
+│  ├─ Isaac Sim SimulationApp (main process)                                   │
+│  ├─ GarmentEnv (LeHome-BiSO101-Direct-Garment-v2)                            │
+│  ├─ zenoh owner loop (run_owner, in-process)  ── state/action ─────┐         │
+│  └─ MJPEG camera server (top/left_wrist/right_wrist)  ── HTTP ─────┼─┐       │
+└────────────────────────────────────────────────────────────────────┼─┼───────┘
                                                                      │ │
-┌───────────────────────────  Studio host  ─────────────────────────┴─┴────────┐
+┌───────────────────────────  Studio host  ──────────────────────────┴─┴───────┐
 │ PhysicalAI Studio catalog plugin (this package)                              │
 │  └─ SharedRobot.attach(name="lehome-garment")  ◄── zenoh ────────────────────┘
-│  └─ MJPEG streams at http://<sim>:8090/camera/{top,left_wrist,right_wrist}    │
+│  └─ MJPEG streams at http://<sim>:8090/camera/{top,left_wrist,right_wrist}   │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
